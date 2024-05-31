@@ -22,5 +22,4 @@ public class StudentAgent extends Agent {
 		// TODO your implementation
 	}
 
-
 }
