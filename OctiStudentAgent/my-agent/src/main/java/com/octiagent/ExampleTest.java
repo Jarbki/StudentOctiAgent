@@ -1,4 +1,4 @@
-package se.miun.dt175g.octi.client;
+package com.octiagent;
 
 import se.miun.dt175g.octi.core.PerformanceTest;
 

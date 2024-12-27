@@ -1,4 +1,4 @@
-package se.miun.dt175g.octi.client.exceptions;
+package com.octiagent.exceptions;
 
 public class OctiGameSetupException extends Exception {
 

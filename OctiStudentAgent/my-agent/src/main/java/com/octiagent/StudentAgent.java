@@ -1,11 +1,10 @@
-package se.miun.dt175g.octi.client;
+package com.octiagent;
 
 
 import java.util.Random;
-
-import se.miun.dt175g.octi.core.Agent;
-import se.miun.dt175g.octi.core.OctiAction;
 import se.miun.dt175g.octi.core.OctiState;
+import se.miun.dt175g.octi.core.OctiAction;
+import se.miun.dt175g.octi.core.Agent;
 
 
 public class StudentAgent extends Agent {
