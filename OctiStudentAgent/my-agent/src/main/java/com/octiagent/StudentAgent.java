@@ -6,8 +6,10 @@ import java.util.Random;
 import se.miun.dt175g.octi.core.OctiState;
 import se.miun.dt175g.octi.core.Player;
 import se.miun.dt175g.octi.core.OctiAction;
+import se.miun.dt175g.octi.core.OctiBoard;
 import se.miun.dt175g.octi.core.Agent;
 import se.miun.dt175g.octi.core.Node;
+import se.miun.dt175g.octi.core.JumpAction;
 
 public class StudentAgent extends Agent {
 
@@ -25,7 +27,7 @@ public class StudentAgent extends Agent {
 
 		Random rand = new Random();
 		Node<OctiState, OctiAction> bestNode = gameTree.get(rand.nextInt(gameTree.size()));
-		double bestEval = evaluateState(bestNode.state);
+		double bestEval = evaluateState(bestNode.state, bestNode.state.getCurrentPlayer());
 
 		for (Node<OctiState, OctiAction> node : gameTree) {
 			OctiState currentChild = node.state;
@@ -46,7 +48,7 @@ public class StudentAgent extends Agent {
 		List<Node<OctiState, OctiAction>> gameTree = Agent.generateChildNodes(root);
 
 		if (depth == 0 || state.isTerminal()) {
-			return evaluateState(state);
+			return evaluateState(state, currentPlayer);
 
 		} else {
 
@@ -83,9 +85,12 @@ public class StudentAgent extends Agent {
 	}
 
 	// method that determines a heuristic value for given state
-	private double evaluateState(OctiState state) {
+	private double evaluateState(OctiState state, Player currentPlayer) {
 		double counter = 0;
+		OctiBoard board = state.getBoard();
+		List<JumpAction> redPods = state.getJumpActions(board.getPodsForPlayer(currentPlayer.getColor()));
 
+		// other things to get a good evaluation.
 		return counter;
 	}
 
