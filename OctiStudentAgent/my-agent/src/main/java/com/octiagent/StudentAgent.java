@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
 import se.miun.dt175g.octi.core.OctiState;
+import se.miun.dt175g.octi.core.Player;
 import se.miun.dt175g.octi.core.OctiAction;
 import se.miun.dt175g.octi.core.Agent;
 import se.miun.dt175g.octi.core.Node;
@@ -13,50 +14,79 @@ public class StudentAgent extends Agent {
 	private List<Node<OctiState, OctiAction>> solutionPath = new ArrayList<>();
 
 	// has the current best move stored
-	private volatile OctiState currentBestMove;
+
 	private int depthLimit = 30;
 
 	@Override
 	public OctiAction getNextMove(OctiState state) {
-		int currentDepth = 0;
-
-		if (currentBestMove == null) {
-
-		}
-
-		// Example of an agent playing just random moves
-		// REMOVE THIS CODE
-		// Random rand = new Random();
-		// var legalActions = state.getLegalActions();
-		// return legalActions.get(rand.nextInt(legalActions.size()));
 
 		Node<OctiState, OctiAction> root = Node.root(state);
 		List<Node<OctiState, OctiAction>> gameTree = Agent.generateChildNodes(root);
 
+		Random rand = new Random();
+		Node<OctiState, OctiAction> bestNode = gameTree.get(rand.nextInt(gameTree.size()));
+		double bestEval = evaluateState(bestNode.state);
+
 		for (Node<OctiState, OctiAction> node : gameTree) {
-			OctiState nodeState = node.state;
-			var legalActions = nodeState.getLegalActions();
+			OctiState currentChild = node.state;
+			double eval = miniMax(depthLimit, currentChild, state.getCurrentPlayer(), Double.NEGATIVE_INFINITY,
+					Double.POSITIVE_INFINITY);
+			if (eval > bestEval) {
+				bestEval = eval;
+				bestNode = node;
+			}
 		}
 
-		if (state.isTerminal()) {
-
-		}
-		// TODO your implementation
-	}
-
-	private void miniMax(int depth, )
-
-
-
-
-	// method that iterates through the tree
-	private void searchTree() {
+		return bestNode.action;
 
 	}
 
-	// method that determines a heuristic for given state
-	private void evaluateAction(OctiAction action) {
+	private double miniMax(int depth, OctiState state, Player currentPlayer, double alpha, double beta) {
+		Node<OctiState, OctiAction> root = Node.root(state);
+		List<Node<OctiState, OctiAction>> gameTree = Agent.generateChildNodes(root);
 
+		if (depth == 0 || state.isTerminal()) {
+			return evaluateState(state);
+
+		} else {
+
+			boolean opponent = currentPlayer.equals(state.getBlackPlayer());
+
+			if (opponent) {
+				double minEval = Double.POSITIVE_INFINITY;
+				for (Node<OctiState, OctiAction> node : gameTree) {
+					OctiState currentState = node.state;
+					double eval = miniMax(depth - 1, currentState, currentState.getCurrentPlayer(), alpha, beta);
+					minEval = Math.min(eval, minEval);
+
+					double currentBeta = Math.min(minEval, beta);
+					if (alpha >= currentBeta) {
+						break;
+					}
+				}
+				return minEval;
+
+			} else {
+				double maxEval = Double.NEGATIVE_INFINITY;
+				for (Node<OctiState, OctiAction> node : gameTree) {
+					OctiState currentState = node.state;
+					double eval = miniMax(depth - 1, currentState, currentState.getCurrentPlayer(), alpha, beta);
+					maxEval = Math.max(eval, maxEval);
+					double currentAlpha = Math.max(maxEval, alpha);
+					if (beta <= currentAlpha) {
+						break;
+					}
+				}
+				return maxEval;
+			}
+		}
+	}
+
+	// method that determines a heuristic value for given state
+	private double evaluateState(OctiState state) {
+		double counter = 0;
+
+		return counter;
 	}
 
 	// stores a current solution path
