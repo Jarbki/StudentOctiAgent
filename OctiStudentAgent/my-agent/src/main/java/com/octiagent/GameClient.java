@@ -12,7 +12,6 @@ import se.miun.dt175g.octi.core.OctiState;
 import se.miun.dt175g.octi.core.Player;
 import se.miun.dt175g.octi.core.communicator.PlayerSetup;
 
-
 // You shouldn't change this class
 public class GameClient {
 	private static final Logger logger = Logger.getLogger(GameClient.class.getName());
@@ -30,7 +29,7 @@ public class GameClient {
 	public void startConnection() {
 		try {
 			clientSocket = new Socket(setup.serverIpAddress, setup.gamePort);
-			//clientSocket.setSoTimeout(5000);  // Set read timeout to 5000 milliseconds
+			// clientSocket.setSoTimeout(5000); // Set read timeout to 5000 milliseconds
 			out = new ObjectOutputStream(clientSocket.getOutputStream());
 			in = new ObjectInputStream(clientSocket.getInputStream());
 		} catch (IOException e) {

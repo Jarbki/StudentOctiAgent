@@ -2,255 +2,248 @@ package com.octiagent;
 
 import java.util.List;
 import java.util.Random;
+
 import se.miun.dt175g.octi.core.OctiState;
-import se.miun.dt175g.octi.core.Player;
 import se.miun.dt175g.octi.core.Pod;
 import se.miun.dt175g.octi.core.Point;
 import se.miun.dt175g.octi.core.OctiAction;
 import se.miun.dt175g.octi.core.OctiBoard;
 import se.miun.dt175g.octi.core.Agent;
-import se.miun.dt175g.octi.core.Direction;
-import se.miun.dt175g.octi.core.Node;
 import se.miun.dt175g.octi.core.JumpAction;
 import se.miun.dt175g.octi.core.JumpActionElement;
+import se.miun.dt175g.octi.core.Node;
 
 public class StudentAgent extends Agent {
 
-	private int depthLimit = 30;
+	private int depthLimit = 15;
+
+	private boolean firstGame = true;
+	private int returnTime = 20;
+
+	private static final int[][] BOARD_VALUES_RED = {
+			{ 0, 0, 0, 0, 0, 0 },
+			{ 0, 100, 200, 200, 100, 0 },
+			{ 0, 150, 250, 250, 150, 0 },
+			{ 0, 250, 500, 500, 250, 0 },
+			{ 0, 300, 650, 650, 300, 0 },
+			{ 0, 2000, 2000, 2000, 2000, 0 },
+			{ 600, 700, 800, 800, 700, 600 }
+	};
+
+	// The bord for black player
+	private static final int[][] BOARD_VALUES_BLACK = {
+			{ 600, 700, 800, 800, 700, 600 },
+			{ 0, 2000, 2000, 2000, 2000, 0 },
+			{ 0, 300, 650, 650, 300, 0 },
+			{ 0, 250, 500, 500, 250, 0 },
+			{ 0, 150, 250, 250, 150, 0 },
+			{ 0, 100, 200, 200, 100, 0 },
+			{ 0, 0, 0, 0, 0, 0 }
+	};
 
 	@Override
 	public OctiAction getNextMove(OctiState state) {
 
-		// Random rand = new Random();
-		// Node<OctiState, OctiAction> bestNode =
-		// gameTree.get(rand.nextInt(gameTree.size()));
-		// double bestEval = evaluateState(bestNode.state, true);
+		Node<OctiState, OctiAction> node = Node.root(state);
 
-		// int count = 1;
-		// for (Node<OctiState, OctiAction> node : gameTree) {
-		// System.out.println("Exploring Node: " + count);
-		// OctiState currentChild = node.state;
-		// double eval = miniMax(depthLimit, currentChild, state.getCurrentPlayer(),
-		// Double.NEGATIVE_INFINITY,
-		// Double.POSITIVE_INFINITY, count);
+		// calculate the return time and depth limit based on time
+		if (firstGame) {
+			returnTime = (int) this.timeLimit / 5;
+			if (this.timeLimit > 200) {
+				depthLimit += ((int) this.timeLimit) / 100;
+			}
+		}
 
-		// if (eval > bestEval) {
-		// bestEval = eval;
-		// bestNode = node;
-		// }
-		// count++;
-		// }
+		long deadLine = System.currentTimeMillis() + this.timeLimit - returnTime;
 
-		System.out.println("getNextMoveCalled!");
-		StateWrapper eval = miniMax(depthLimit, state, true, Double.NEGATIVE_INFINITY, Double.POSITIVE_INFINITY);
-		System.out.println(eval.getEval());
-		Node<OctiState, OctiAction> node = Node.root(eval.getState());
+		EvalAction bestAction = MiniMax(node, depthLimit, deadLine);
 
-		return node.action;
+		return bestAction.action;
+	}
+
+	private EvalAction MiniMax(Node<OctiState, OctiAction> node, int depth, long deadLine) {
+		return Max(node, depth, deadLine, Integer.MIN_VALUE, Integer.MAX_VALUE);
 
 	}
 
-	private StateWrapper miniMax(int depth, OctiState state, boolean currentPlayer, double alpha, double beta) {
-
-		System.out.println("depth: " + depth);
-		Node<OctiState, OctiAction> root = Node.root(state);
-		List<Node<OctiState, OctiAction>> gameTree = Agent.generateChildNodes(root);
-
-		double currentEval = evaluateState(state, currentPlayer);
-		StateWrapper bestState = new StateWrapper(state, currentEval);
-
-		if (depth == 0 || state.isTerminal()) {
-			// return evaluateState(state, currentPlayer);
-			System.out.println("returning: depth=" + depth + "terminal=" + state.isTerminal());
-			return bestState;
+	// choosing for the maximizing player
+	private EvalAction Max(Node<OctiState, OctiAction> node, int depth, long deadLine, int alpha, int beta) {
+		if (depth <= 0 || System.currentTimeMillis() >= deadLine) {
+			int eval = evaluateState(node.state, depth + 1);
+			return new EvalAction(eval, null);
 		}
 
-		if (currentPlayer) {
-			// we want to maximize the value for current player(this agent)
-			double maxEval = Double.NEGATIVE_INFINITY;
+		if (node.state.isTerminal()) {
+			int eval = evaluateState(node.state, depth + 1);
+			return new EvalAction(eval, null);
+		}
 
-			for (Node<OctiState, OctiAction> node : gameTree) {
-				OctiState currentState = node.state;
-				StateWrapper wrapper = miniMax(depth - 1, currentState, false, alpha, beta);
-				double eval = wrapper.getEval();
+		// iterate through the child nodes
+		int maxEval = Integer.MIN_VALUE;
+		EvalAction bestAction = null;
+		var childNodes = Agent.generateChildNodes(node);
 
-				if (eval > maxEval) {
-					bestState.setState(currentState);
-					bestState.addEval(eval);
-					maxEval = eval;
+		for (Node<OctiState, OctiAction> child : childNodes) {
+			EvalAction evalAction = Min(child, depth - 1, deadLine, alpha, beta);
 
-				}
+			alpha = Math.max(alpha, evalAction.eval);
 
-				alpha = Math.max(maxEval, alpha);
-				if (beta <= alpha) {
-					// System.out.println("branch pruned");
-					break;
-				}
+			if (evalAction.eval > maxEval) {
+				maxEval = evalAction.eval;
+				bestAction = new EvalAction(maxEval, child.action);
 			}
-			System.out.println("returning max");
-			return bestState;
 
+			// pruning
+			if (alpha >= beta) {
+				break;
+			}
+
+		}
+
+		return bestAction;
+	}
+
+	// choosing for the minimizing player
+	private EvalAction Min(Node<OctiState, OctiAction> node, int depth, long deadLine, int alpha, int beta) {
+		if (depth <= 0 || System.currentTimeMillis() >= deadLine) {
+			int eval = evaluateState(node.state, depth + 1);
+			return new EvalAction(eval, null);
+		}
+
+		if (node.state.isTerminal()) {
+			int eval = evaluateState(node.state, depth + 1);
+			return new EvalAction(eval, null);
+		}
+
+		// iterate through the child nodes
+		int minEval = Integer.MAX_VALUE;
+		EvalAction bestAction = null;
+		var childNodes = Agent.generateChildNodes(node);
+
+		for (Node<OctiState, OctiAction> child : childNodes) {
+			EvalAction evalAction = Max(child, depth - 1, deadLine, alpha, beta);
+
+			beta = Math.min(beta, evalAction.eval);
+
+			if (evalAction.eval < minEval) {
+				minEval = evalAction.eval;
+				bestAction = new EvalAction(minEval, child.action);
+			}
+
+			// pruning
+			if (beta <= alpha) {
+				break;
+			}
+
+		}
+
+		return bestAction;
+
+	}
+
+	// heuristic methods
+	private int evaluateState(OctiState state, int depth) {
+		int score = 0;
+
+		// Get pods for both players
+		List<Pod> myAgentPods = state.getBoard().getPodsForPlayer(player.getColor());
+		List<Pod> opponentsPods = state.getBoard().getPodsForPlayer(oppPlayer.getColor());
+
+		Point[] myBases = player.getColor() == "red" ? state.getRedBase() : state.getBlackBase();
+		Point[] opponentBases = player.getColor() == "red" ? state.getBlackBase() : state.getRedBase();
+
+		// Evaluate the distance between the pods and the bases
+		score += distance(myAgentPods, state.getBoard(), opponentBases);
+		score -= distance(opponentsPods, state.getBoard(), myBases);
+
+		// Set score based on pods left
+		score += 4000 / (myAgentPods.size() + 1);
+		score -= 4000 / (opponentsPods.size() + 1);
+
+		// Evaluate the board
+		score += boardScore(myAgentPods, state, player.getColor() == "red" ? BOARD_VALUES_RED : BOARD_VALUES_BLACK);
+		score -= boardScore(opponentsPods, state, player.getColor() == "red" ? BOARD_VALUES_BLACK : BOARD_VALUES_RED);
+
+		// Evaluate the jump actions
+		if (state.getCurrentPlayer().getPlayerId() == player.getPlayerId()) {
+			score += jumpActions(state.getJumpActions(myAgentPods), state);
 		} else {
-			// we want to minimize the value for current player(other agent)
-			double minEval = Double.POSITIVE_INFINITY;
-
-			for (Node<OctiState, OctiAction> node : gameTree) {
-				OctiState currentState = node.state;
-				StateWrapper wrapper = miniMax(depth - 1, currentState, true, alpha, beta);
-				double eval = wrapper.getEval();
-
-				if (eval < minEval) {
-					bestState.setState(currentState);
-					bestState.addEval(eval);
-					minEval = eval;
-
-				}
-
-				beta = Math.min(minEval, beta);
-				if (beta <= alpha) {
-					// System.out.println("branch pruned");
-					break;
-				}
-			}
-			System.out.println("returning min");
-			return bestState;
+			score -= jumpActions(state.getJumpActions(opponentsPods), state);
 		}
 
-	}
+		if (state.isTerminal()) {
 
-	// method that determines a heuristic value for given state
-	private double evaluateState(OctiState state, boolean current) {
-
-		OctiBoard board = state.getBoard();
-
-		Point[] redBase = state.getRedBase();
-		Point[] blackBase = state.getBlackBase();
-
-		List<JumpAction> jumpActionsRed = state.getJumpActions(board.getPodsForPlayer("red"));
-		List<JumpAction> jumpActionsBlack = state.getJumpActions(board.getPodsForPlayer("black"));
-
-		List<Pod> podsRed = board.getPodsForPlayer("red");
-		List<Pod> podsBlack = board.getPodsForPlayer("black");
-
-		double evaluationRed = evaluateJumpActions(jumpActionsRed, state, board)
-				+ evaluatePods(podsRed, board, redBase);
-		double evaluationBlack = evaluateJumpActions(jumpActionsBlack, state, board)
-				+ evaluatePods(podsBlack, board, blackBase);
-
-		if (current) {
-			// System.out.println("eval red");
-			// System.out.println("eval=" + (evaluationRed - evaluationBlack));
-			return evaluationRed - evaluationBlack;
-
-		} else {
-			// System.out.println("eval black");
-			// System.out.println("eval=" + (evaluationRed - evaluationBlack));
-			return evaluationBlack - evaluationRed;
-		}
-
-	}
-
-	private double evaluateJumpActions(List<JumpAction> jumps, OctiState state, OctiBoard board) {
-		double evaluation = 0;
-
-		for (JumpAction jump : jumps) {
-			OctiState jumpState = state.performAction(jump);
-			if (jumpState.isTerminal()) {
-				evaluation += 5;
-			}
-
-			List<JumpActionElement> jumpElements = jump.getJumpActionElements();
-			for (JumpActionElement jumpElement : jumpElements) {
-				if (jumpElement.isCapturePod()) {
-					evaluation++;
-				}
+			if (state.getWinner() == this.player.getPlayerId()) {
+				score += 10000;
+			} else {
+				score -= 10000;
 			}
 		}
-
-		return evaluation;
+		int depthScore = (int) (depthLimit - depth) + 1;
+		return ((int) score / depthScore);
 	}
 
-	private double evaluatePods(List<Pod> pods, OctiBoard board, Point[] bases) {
+	private int distance(List<Pod> pods, OctiBoard board, Point[] bases) {
 
-		double eval = 0;
+		int eval = 6000;
 
 		for (Pod pod : pods) {
-			eval += evaluateProngs(pod) + evaluateDistance(board, pod, bases);
+			int shortestDist = Integer.MAX_VALUE;
+			Point point = board.getPositionFromPod(pod);
+
+			for (Point base : bases) {
+				int baseX = base.x();
+				int baseY = base.y();
+
+				int podX = point.x();
+				int podY = point.y();
+
+				double diffY = Math.abs(baseY - podY);
+				double diffX = Math.abs(baseX - podX);
+
+				int distance = (int) Math.sqrt((diffY * diffY) + (diffX * diffX));
+
+				if (distance < shortestDist) {
+					shortestDist = distance;
+				}
+			}
+
+			eval = (int) (eval / (shortestDist + 1));
+
 		}
 
 		return eval;
 	}
 
-	private double evaluateDistance(OctiBoard board, Pod pod, Point[] bases) {
-		double eval = 15;
-		Point point = board.getPositionFromPod(pod);
-		double shortestDist = Double.POSITIVE_INFINITY;
+	private int jumpActions(List<JumpAction> actions, OctiState state) {
+		int eval = 0;
 
-		for (Point base : bases) {
-			int baseX = base.x();
-			int baseY = base.y();
+		for (JumpAction action : actions) {
 
-			int podX = point.x();
-			int podY = point.y();
+			List<JumpActionElement> elements = action.getJumpActionElements();
+			for (JumpActionElement element : elements) {
+				if (element.isCapturePod()) {
+					eval += 500;
+				}
 
-			double diffY = Math.abs(baseY - podY);
-			double diffX = Math.abs(baseX - podX);
-
-			double distance = Math.sqrt((diffY * diffY) + (diffX * diffX));
-
-			if (distance < shortestDist) {
-				shortestDist = distance;
 			}
+
+			eval += 100 * elements.size();
 		}
 
-		return eval - shortestDist;
-	}
-
-	private double evaluateProngs(Pod pod) {
-		double eval = 0;
-		for (Direction dir : Direction.values()) {
-			switch (dir) {
-
-				case FRONT:
-					if (pod.hasProng(dir)) {
-						eval++;
-					}
-
-					break;
-
-				case FRONT_LEFT:
-					if (pod.hasProng(dir)) {
-						eval++;
-					}
-
-					break;
-
-				case FRONT_RIGHT:
-					if (pod.hasProng(dir)) {
-						eval++;
-					}
-
-					break;
-
-				case LEFT:
-					if (pod.hasProng(dir)) {
-						eval++;
-					}
-
-					break;
-
-				case RIGHT:
-					if (pod.hasProng(dir)) {
-						eval++;
-					}
-
-					break;
-
-				default:
-					break;
-			}
-		}
 		return eval;
 	}
 
+	private int boardScore(List<Pod> pods, OctiState state, int[][] boardValues) {
+		int eval = 0;
+
+		for (Pod pod : pods) {
+			Point point = state.getBoard().getPositionFromPod(pod);
+
+			eval += boardValues[point.y()][point.x()];
+
+		}
+		return eval;
+
+	}
 }
